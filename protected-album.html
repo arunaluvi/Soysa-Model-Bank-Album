@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lobo Reel — Protected Album</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0C0E;
+    --card:#16171A;
+    --gold:#C9A227;
+    --ink:#EDEAE3;
+    --muted:#8A8A85;
+    --danger:#B5443B;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; height:100%; background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif; overflow:hidden; user-select:none;
+    -webkit-user-select:none; -webkit-touch-callout:none;
+  }
+  /* deterrent: disable text/image selection & callouts globally */
+  img{ -webkit-user-drag:none; user-drag:none; pointer-events:none; }
+
+  .stage{
+    position:relative; width:100vw; height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .letterbox-top, .letterbox-bottom{
+    position:absolute; left:0; right:0; height:6vh; background:#000; z-index:5;
+  }
+  .letterbox-top{ top:0; } .letterbox-bottom{ bottom:0; }
+
+  .header{
+    position:absolute; top:1.6vh; left:0; right:0; z-index:6;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px; font-family:'Inter'; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  .header .brand{ color:var(--gold); font-weight:600; }
+  .frame-count{ font-variant-numeric: tabular-nums; }
+
+  .track{
+    display:flex; height:88vh; width:100vw;
+    transition: transform .45s cubic-bezier(.22,.68,.36,1);
+    will-change: transform;
+  }
+  .slide{
+    flex:0 0 100vw; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .frame{
+    position:relative; width:min(92vw, 640px); height:82vh;
+    border:1px solid rgba(201,162,39,.25);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden; background:#0F1012;
+  }
+  .frame img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* placeholder art when no real photo supplied */
+  .placeholder{
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:10px;
+    background: radial-gradient(circle at 30% 20%, rgba(201,162,39,.18), transparent 60%),
+                linear-gradient(160deg, #1c1d21, #0b0c0e 70%);
+  }
+  .placeholder .num{ font-family:'Fraunces'; font-style:italic; font-size:15vw; color:rgba(201,162,39,.28); line-height:1;}
+  .placeholder .label{ font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted);}
+
+  /* watermark — repeated, semi-transparent, rotated: this is the real protection */
+  .watermark{
+    position:absolute; inset:0; pointer-events:none; z-index:3;
+    background-image: repeating-linear-gradient(
+      -28deg,
+      transparent 0 120px,
+      rgba(237,234,227,0.08) 120px 121px,
+      transparent 121px 240px
+    );
+  }
+  .watermark-text{
+    position:absolute; inset:0; z-index:4; pointer-events:none;
+    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(5,1fr);
+    transform: rotate(-28deg) scale(1.4);
+  }
+  .watermark-text span{
+    font-family:'Inter'; font-weight:600; font-size:11px; letter-spacing:.08em;
+    color:rgba(237,234,227,0.10); white-space:nowrap;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .caption{
+    position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+    font-family:'Fraunces'; font-style:italic; font-size:14px; color:var(--ink);
+    text-align:center; width:90%;
+  }
+  .caption .sub{ display:block; font-family:'Inter'; font-style:normal; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-top:4px;}
+
+  .dots{
+    position:absolute; bottom:1.2vh; left:0; right:0; z-index:6;
+    display:flex; gap:6px; justify-content:center;
+  }
+  .dot{ width:5px; height:5px; border-radius:50%; background:rgba(237,234,227,.25); transition:.3s;}
+  .dot.active{ background:var(--gold); width:16px; border-radius:3px; }
+
+  .nav-btn{
+    position:absolute; top:50%; transform:translateY(-50%); z-index:6;
+    background:rgba(11,12,14,.5); border:1px solid rgba(201,162,39,.3);
+    color:var(--ink); width:38px; height:38px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; cursor:pointer; backdrop-filter: blur(4px);
+  }
+  .nav-btn.prev{ left:14px; } .nav-btn.next{ right:14px; }
+  @media (max-width:640px){ .nav-btn{display:none;} }
+
+  /* shield overlay — flashes when devtools / screenshot gesture heuristics trigger */
+  .shield{
+    position:fixed; inset:0; background:var(--bg); z-index:50;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px;
+    opacity:0; pointer-events:none; transition:opacity .15s;
+  }
+  .shield.show{ opacity:1; pointer-events:all; }
+  .shield .lock{ font-size:28px; color:var(--gold); }
+  .shield p{ font-family:'Inter'; font-size:12px; color:var(--muted); letter-spacing:.06em; text-align:center; padding:0 30px;}
+
+  .footer-note{
+    position:absolute; bottom:0.4vh; right:16px; z-index:6;
+    font-size:9px; color:rgba(138,138,133,.6); letter-spacing:.08em;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="letterbox-top"></div>
+  <div class="letterbox-bottom"></div>
+
+  <div class="header">
+    <div><span class="brand">#SoloLobo</span> · Lobo Reel</div>
+    <div class="frame-count" id="frameCount">01 / 06</div>
+  </div>
+
+  <div class="track" id="track"></div>
+
+  <button class="nav-btn prev" id="prevBtn" aria-label="Previous">‹</button>
+  <button class="nav-btn next" id="nextBtn" aria-label="Next">›</button>
+
+  <div class="dots" id="dots"></div>
+  <div class="footer-note">view only · no download</div>
+</div>
+
+<div class="shield" id="shield">
+  <div class="lock">🔒</div>
+  <p>This album is view‑only.<br>Screenshots and screen recording aren't blocked by any<br>website — this overlay is just a polite deterrent, not a lock.</p>
+</div>
+
+<script>
+// ---- Sample data: replace 'img' with a real URL or base64 string per slide ----
+const slides = [
+  { img: null, num:"01", label:"Sigiriya — Rally Concept", caption:"KTM 450 · Sigiriya Rock", sub:"Frame 01 of 06" },
+  { img: null, num:"02", label:"Colombo Streets", caption:"Editorial Series", sub:"Frame 02 of 06" },
+  { img: null, num:"03", label:"Civic Type R", caption:"Motorsport Film Still", sub:"Frame 03 of 06" },
+  { img: null, num:"04", label:"Bridal Reel", caption:"Wedding Cinematics", sub:"Frame 04 of 06" },
+  { img: null, num:"05", label:"Evo X Night Run", caption:"Motorsport Film Still", sub:"Frame 05 of 06" },
+  { img: null, num:"06", label:"AI Photoshoot", caption:"Editorial Concept", sub:"Frame 06 of 06" },
+];
+
+const track = document.getElementById('track');
+const dotsEl = document.getElementById('dots');
+const frameCountEl = document.getElementById('frameCount');
+const watermarkLabel = "SOLOLOBO · VIEW ONLY";
+
+slides.forEach((s, i) => {
+  const slide = document.createElement('div');
+  slide.className = 'slide';
+
+  const frame = document.createElement('div');
+  frame.className = 'frame';
+
+  let mediaHtml;
+  if (s.img) {
+    mediaHtml = `<img src="${s.img}" draggable="false" alt="${s.label}">`;
+  } else {
+    mediaHtml = `<div class="placeholder"><div class="num">${s.num}</div><div class="label">${s.label}</div></div>`;
+  }
+
+  // watermark text grid
+  let wmSpans = '';
+  for (let k=0;k<15;k++){ wmSpans += `<span>${watermarkLabel}</span>`; }
+
+  frame.innerHTML = `
+    ${mediaHtml}
+    <div class="watermark"></div>
+    <div class="watermark-text">${wmSpans}</div>
+  `;
+
+  const caption = document.createElement('div');
+  caption.className = 'caption';
+  caption.innerHTML = `${s.caption}<span class="sub">${s.sub}</span>`;
+
+  slide.appendChild(frame);
+  slide.appendChild(caption);
+  track.appendChild(slide);
+
+  const dot = document.createElement('div');
+  dot.className = 'dot' + (i===0 ? ' active' : '');
+  dotsEl.appendChild(dot);
+});
+
+let current = 0;
+const total = slides.length;
+
+function render(){
+  track.style.transform = `translateX(-${current*100}vw)`;
+  [...dotsEl.children].forEach((d,i)=> d.classList.toggle('active', i===current));
+  frameCountEl.textContent = `${String(current+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}`;
+}
+function go(delta){
+  current = (current + delta + total) % total;
+  render();
+}
+document.getElementById('nextBtn').onclick = () => go(1);
+document.getElementById('prevBtn').onclick = () => go(-1);
+
+// swipe support
+let touchStartX = 0;
+track.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX, {passive:true});
+track.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+}, {passive:true});
+
+// keyboard
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') go(1);
+  if (e.key === 'ArrowLeft') go(-1);
+});
+
+// ---- Deterrents (friction, not real protection) ----
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('dragstart', e => e.preventDefault());
+document.addEventListener('selectstart', e => e.preventDefault());
+document.addEventListener('copy', e => e.preventDefault());
+
+// blur the album if the tab loses focus (deters casual screen-recording setup / devtools switch)
+const shield = document.getElementById('shield');
+window.addEventListener('blur', () => shield.classList.add('show'));
+window.addEventListener('focus', () => shield.classList.remove('show'));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) shield.classList.add('show'); else shield.classList.remove('show');
+});
+
+// crude devtools-open heuristic (window size delta) — deterrent only, not reliable
+let devtoolsCheck = setInterval(() => {
+  const threshold = 160;
+  if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
+    shield.classList.add('show');
+  }
+}, 800);
+
+render();
+</script>
+</body>
+</html>
